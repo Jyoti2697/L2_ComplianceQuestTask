@@ -26,6 +26,11 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
 **/
     public void execute(Database.BatchableContext batchContext,List<SQX_Part__c> partList){
         try{
+            String profileName=[Select Id,Name from Profile where Id=:UserInfo.getProfileId()].Name;
+            system.debug('profileName:::'+profileName);
+            List<PermissionSetAssignment> permissionSetAssList = [SELECT AssigneeId, PermissionSet.Name FROM PermissionSetAssignment WHERE PermissionSet.Name = 'CQ_Product_Admin' AND AssigneeId=:UserInfo.getUserId() WITH SECURITY_ENFORCED];
+            //Here checking the Profile name and Permission set according to the requirement.
+            if(profileName == 'System Administrator' && !permissionSetAssList.isEmpty()){
             Set<String> partsName= new Set<String>();
             Set<String> partsNumber= new Set<String>();
             for(SQX_Part__c partObj: partList){
@@ -40,13 +45,9 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
                 existingProductMap.put(productObj.Name + productObj.ProductCode, productObj);
             }
             //Here getting the profile Name System Admin and Permission set CQ Product Admin
-            String profileName=[Select Id,Name from Profile where Id=:UserInfo.getProfileId()].Name;
-            system.debug('profileName:::'+profileName);
-            List<PermissionSetAssignment> permissionSetAssList = [SELECT AssigneeId, PermissionSet.Name FROM PermissionSetAssignment WHERE PermissionSet.Name = 'CQ_Product_Admin' AND AssigneeId=:UserInfo.getUserId() WITH SECURITY_ENFORCED];
+            
             system.debug('permissionSetAssList:::'+permissionSetAssList);
             for(SQX_Part__c partOBj: partList){
-                //Here checking the Profile name and Permission set according to the requirement.
-                if(profileName == 'System Administrator' && !permissionSetAssList.isEmpty()){
                     if(existingProductMap.containsKey(partOBj.Name + partOBj.Part_Number__c)){
                         partOBj.Product__c= existingProductMap.get(partOBj.Name + partOBj.Part_Number__c).Id;
                         updateParts.add(partOBj);
@@ -58,7 +59,6 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
                         productObj.IsActive= partOBj.Active__c;
                         insertProduct.put(partOBj.Id,productObj);
                     }
-                }
             }
             if(!insertProduct.isEmpty() && (Schema.sObjectType.Product2.isCreateable())){
                 Database.SaveResult[] saveProductList= Database.insert(insertProduct.values());
@@ -73,10 +73,11 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
                 getFailedRecord(savePartList);
             }
             
-            
+        }
         }
         catch(Exception ex){
             System.debug('Error::::'+ex.getMessage()+' line number:::'+ex.getLineNumber());
+            failedRecord.add(ex.getMessage());
         }
     }
     /**
