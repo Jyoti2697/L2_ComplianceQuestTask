@@ -26,6 +26,7 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
 **/
     public void execute(Database.BatchableContext batchContext,List<SQX_Part__c> partList){
         try{
+            //Here getting the profile Name System Admin and Permission set CQ Product Admin
             String profileName=[Select Id,Name from Profile where Id=:UserInfo.getProfileId()].Name;
             system.debug('profileName:::'+profileName);
             List<PermissionSetAssignment> permissionSetAssList = [SELECT AssigneeId, PermissionSet.Name FROM PermissionSetAssignment WHERE PermissionSet.Name = 'CQ_Product_Admin' AND AssigneeId=:UserInfo.getUserId() WITH SECURITY_ENFORCED];
@@ -44,9 +45,6 @@ public class ProductPartSyncBatchController implements Database.Batchable<SObjec
             for(Product2 productObj: [Select Id,Name,ProductCode From Product2 Where Name IN: partsName AND ProductCode IN: partsNumber LIMIT 10000]){
                 existingProductMap.put(productObj.Name + productObj.ProductCode, productObj);
             }
-            //Here getting the profile Name System Admin and Permission set CQ Product Admin
-            
-            system.debug('permissionSetAssList:::'+permissionSetAssList);
             for(SQX_Part__c partOBj: partList){
                     if(existingProductMap.containsKey(partOBj.Name + partOBj.Part_Number__c)){
                         partOBj.Product__c= existingProductMap.get(partOBj.Name + partOBj.Part_Number__c).Id;
